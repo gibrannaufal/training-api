@@ -1,9 +1,12 @@
 package main
 
 import (
+	"github.com/gibrannaufal/training-api/Models/UserModels"
+	"github.com/gibrannaufal/training-api/Routes/user"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"training-api/models" // Import models dari folder models
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 // Koneksi ke database MySQL
@@ -15,38 +18,25 @@ func initDB() *gorm.DB {
 	}
 
 	// AutoMigrate untuk membuat tabel jika belum ada
-	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&UserModels.User{})
 
 	return db
 }
 
 func main() {
-	// Inisialisasi Gin
 	r := gin.Default()
 
-	// Inisialisasi database
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8000"},
+		AllowMethods:     []string{"POST", "GET", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
+
 	db := initDB()
 
-	// Route untuk menambahkan user
-	r.POST("/add-user", func(c *gin.Context) {
-		var user models.User
-
-		// Bind JSON request body ke struct user
-		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Simpan data user ke database
-		result := db.Create(&user)
-		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-			return
-		}
-
-		// Berikan respons sukses
-		c.JSON(http.StatusOK, gin.H{"message": "User created successfully", "user": user})
-	})
+	user.UserRoutes(r, db)
 
 	// Jalankan server di port 8001
 	r.Run(":8001")
